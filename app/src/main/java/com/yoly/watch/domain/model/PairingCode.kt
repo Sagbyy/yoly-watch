@@ -1,6 +1,7 @@
 package com.yoly.watch.domain.model
 
 data class PairingCode(
+    val pairingId: String,
     val value: String,
     val validForSeconds: Long,
 ) {

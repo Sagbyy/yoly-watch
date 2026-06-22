@@ -11,5 +11,6 @@ sealed interface PairingUiState {
         val progress: Float
             get() = (remainingSeconds.toFloat() / code.validForSeconds).coerceIn(0f, 1f)
     }
+    data object Confirmed : PairingUiState
     data class Error(val message: String) : PairingUiState
 }

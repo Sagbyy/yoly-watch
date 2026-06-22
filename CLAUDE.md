@@ -41,6 +41,20 @@ com.yoly.watch/
 - User-facing strings live in `res/values/strings.xml`; never hardcode them in Composables.
 - Suspend functions for I/O; no blocking calls on the main thread.
 
+## Networking
+
+- HTTP via Retrofit + OkHttp; JSON via kotlinx.serialization (`@Serializable` DTOs).
+- Real-time pairing confirmation uses **SSE** (`okhttp-sse` `EventSource`) wrapped in a `callbackFlow`, exposed to the domain as `Flow<PairingStatus>`. The transport (SSE / polling / push) stays an implementation detail of `data/remote` — the ViewModel only collects the Flow.
+- Swap mock ↔ real network in `di/ServiceLocator` via the `USE_MOCK` flag; set `BASE_URL` to the real API. `MockPairingCodeApi` simulates a confirmation so the flow is testable offline.
+- The SSE client uses `readTimeout = 0` (no read timeout) so the stream stays open.
+- `INTERNET` permission is declared in the manifest.
+
+## Watch identity
+
+- The watch's stable identifier is a UUID generated once and persisted in DataStore (`DataStoreWatchIdentityProvider`), exposed via the domain `WatchIdentityProvider`. It survives app restarts and is reset only on uninstall / clear-data.
+- It is sent as `watchId` in the `POST /pairing/codes` body so the backend can durably associate the watch with the account. Distinct from the server-generated, ephemeral `pairingId`.
+- `ServiceLocator.init(context)` is called from the `YolyWatchApp` Application class (registered via `android:name` in the manifest) to provide the Context that DataStore needs.
+
 ## Build
 
 ```

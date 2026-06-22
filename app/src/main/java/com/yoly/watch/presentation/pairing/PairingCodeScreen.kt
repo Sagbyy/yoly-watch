@@ -54,7 +54,6 @@ fun PairingCodeScreen(
     YolywatchTheme {
         val scrollState = rememberScrollState()
         Scaffold(
-            timeText = { TimeText() },
             vignette = { Vignette(vignettePosition = VignettePosition.TopAndBottom) },
             positionIndicator = { PositionIndicator(scrollState = scrollState) },
         ) {
@@ -69,6 +68,7 @@ fun PairingCodeScreen(
                 when (uiState) {
                     PairingUiState.Loading -> LoadingContent()
                     is PairingUiState.Success -> SuccessContent(uiState)
+                    PairingUiState.Confirmed -> ConfirmedContent()
                     is PairingUiState.Error -> ErrorContent(uiState.message, onRetry)
                 }
             }
@@ -149,6 +149,31 @@ private fun CodeRing(state: PairingUiState.Success) {
 }
 
 @Composable
+private fun ConfirmedContent() {
+    Text(
+        text = "✓",
+        textAlign = TextAlign.Center,
+        color = MaterialTheme.colors.primary,
+        style = MaterialTheme.typography.display1.copy(fontWeight = FontWeight.Bold),
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Text(
+        text = stringResource(R.string.pairing_confirmed_title),
+        textAlign = TextAlign.Center,
+        style = MaterialTheme.typography.title3,
+        color = MaterialTheme.colors.onBackground,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Text(
+        text = stringResource(R.string.pairing_confirmed_message),
+        textAlign = TextAlign.Center,
+        style = MaterialTheme.typography.body2,
+        color = MaterialTheme.colors.onSurfaceVariant,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+@Composable
 private fun ErrorContent(message: String, onRetry: () -> Unit) {
     Text(
         text = stringResource(R.string.pairing_error),
@@ -179,9 +204,18 @@ private fun String.formatAsGroupedCode(): String =
 @Composable
 private fun SuccessPreview() {
     PairingCodeScreen(
-        uiState = PairingUiState.Success(PairingCode("482915", 120), remainingSeconds = 78),
+        uiState = PairingUiState.Success(
+            PairingCode("pair-1", "482915", 120),
+            remainingSeconds = 78,
+        ),
         onRetry = {},
     )
+}
+
+@Preview(device = WearDevices.SMALL_ROUND, showSystemUi = true)
+@Composable
+private fun ConfirmedPreview() {
+    PairingCodeScreen(uiState = PairingUiState.Confirmed, onRetry = {})
 }
 
 @Preview(device = WearDevices.SMALL_ROUND, showSystemUi = true)

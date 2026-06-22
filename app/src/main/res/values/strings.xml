@@ -16,4 +16,6 @@
     <string name="pairing_expires_in">Expire dans %1$d s</string>
     <string name="pairing_retry">Réessayer</string>
     <string name="pairing_error">Impossible de récupérer le code.</string>
+    <string name="pairing_confirmed_title">Montre associée</string>
+    <string name="pairing_confirmed_message">Votre montre est désormais connectée à votre compte Yoly.</string>
 </resources>

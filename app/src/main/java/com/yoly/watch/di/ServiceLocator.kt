@@ -29,9 +29,9 @@ private val Context.dataStore by preferencesDataStore(name = "yoly_watch_prefs")
 
 object ServiceLocator {
 
-    // 10.0.2.2 = host "localhost" vu depuis l'émulateur Android. Sur un appareil
-    // réel, remplacer par l'IP LAN de la machine de dev (ou l'URL de prod).
-    private const val BASE_URL = "http://10.0.2.2:3000/"
+    // IP LAN de la machine de dev (montre physique sur le même WiFi).
+    // Émulateur : utiliser http://10.0.2.2:3000/ ; prod : l'URL HTTPS publique.
+    private const val BASE_URL = "http://192.168.1.191:3000/"
     private const val USE_MOCK = false
 
     private lateinit var appContext: Context

@@ -34,7 +34,7 @@ com.yoly.watch/
 
 ## Conventions
 
-- **No useless comments.** Code is self-documenting through naming. Add a comment only to explain a non-obvious *why*, never to restate *what* the code does. No KDoc boilerplate on obvious members.
+- **No comments unless strictly necessary.** The codebase is comment-free by default. Remove template/boilerplate KDoc, section-header comments, and any comment that restates *what* the code does. Keep a comment only when it explains a non-obvious *why* that the code cannot express on its own (e.g. an environment-specific gotcha, the intent behind an intentionally-empty block). When in doubt, delete it. This rule applies to Kotlin, XML, and Gradle files alike.
 - **Always provide a `@Preview` for UI components.** Every Composable screen/component has at least one `@Preview` (use `WearDevices.SMALL_ROUND`). Cover each meaningful state (Loading, Success, Error) with its own preview, driven by a stateless Composable that takes `UiState` as a parameter.
 - Keep Composables stateless where possible: a `Route` Composable wires the ViewModel and passes plain state + callbacks down to a stateless `Screen`.
 - Use `collectAsStateWithLifecycle()` to observe state in Compose.

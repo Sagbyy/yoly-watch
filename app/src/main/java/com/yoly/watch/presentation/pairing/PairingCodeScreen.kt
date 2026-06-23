@@ -1,6 +1,11 @@
 package com.yoly.watch.presentation.pairing
 
+import android.media.AudioManager
+import android.media.ToneGenerator
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,9 +18,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -24,7 +36,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.wear.compose.material.Button
+import androidx.wear.compose.material.Chip
+import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.CircularProgressIndicator
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.PositionIndicator
@@ -150,12 +163,42 @@ private fun CodeRing(state: PairingUiState.Success) {
 
 @Composable
 private fun ConfirmedContent() {
+    val haptic = LocalHapticFeedback.current
+    val inInspection = LocalInspectionMode.current
+    val scale = remember { Animatable(0f) }
+
+    val toneGenerator = remember {
+        if (inInspection) null
+        else runCatching {
+            ToneGenerator(AudioManager.STREAM_NOTIFICATION, ToneGenerator.MAX_VOLUME)
+        }.getOrNull()
+    }
+    DisposableEffect(Unit) {
+        onDispose { toneGenerator?.release() }
+    }
+
+    LaunchedEffect(Unit) {
+        toneGenerator?.startTone(ToneGenerator.TONE_PROP_ACK, 250)
+        if (!inInspection) {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+        scale.animateTo(
+            targetValue = 1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow,
+            ),
+        )
+    }
+
     Text(
         text = "✓",
         textAlign = TextAlign.Center,
         color = MaterialTheme.colors.primary,
         style = MaterialTheme.typography.display1.copy(fontWeight = FontWeight.Bold),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .scale(scale.value),
     )
     Text(
         text = stringResource(R.string.pairing_confirmed_title),
@@ -189,12 +232,20 @@ private fun ErrorContent(message: String, onRetry: () -> Unit) {
         color = MaterialTheme.colors.onSurfaceVariant,
         modifier = Modifier.fillMaxWidth(),
     )
-    Button(
+    Chip(
         onClick = onRetry,
-        modifier = Modifier.padding(top = 4.dp),
-    ) {
-        Text(text = stringResource(R.string.pairing_retry))
-    }
+        label = {
+            Text(
+                text = stringResource(R.string.pairing_retry),
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+            )
+        },
+        colors = ChipDefaults.primaryChipColors(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp),
+    )
 }
 
 private fun String.formatAsGroupedCode(): String =

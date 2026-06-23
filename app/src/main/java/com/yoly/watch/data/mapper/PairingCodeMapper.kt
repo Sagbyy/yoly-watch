@@ -1,9 +1,9 @@
 package com.yoly.watch.data.mapper
 
 import com.yoly.watch.data.remote.dto.PairingCodeDto
-import com.yoly.watch.data.remote.dto.PairingStatusDto
+import com.yoly.watch.data.remote.dto.PairingEventDto
 import com.yoly.watch.domain.model.PairingCode
-import com.yoly.watch.domain.model.PairingStatus
+import com.yoly.watch.domain.model.PairingEvent
 
 fun PairingCodeDto.toDomain(): PairingCode = PairingCode(
     pairingId = pairingId,
@@ -11,8 +11,8 @@ fun PairingCodeDto.toDomain(): PairingCode = PairingCode(
     validForSeconds = expiresInSeconds,
 )
 
-fun PairingStatusDto.toDomain(): PairingStatus = when (status.uppercase()) {
-    "CONFIRMED" -> PairingStatus.CONFIRMED
-    "EXPIRED" -> PairingStatus.EXPIRED
-    else -> PairingStatus.PENDING
+fun PairingEventDto.toDomain(): PairingEvent = when (status.uppercase()) {
+    "CONFIRMED" -> PairingEvent.Confirmed(deviceToken.orEmpty())
+    "EXPIRED" -> PairingEvent.Expired
+    else -> PairingEvent.Pending
 }

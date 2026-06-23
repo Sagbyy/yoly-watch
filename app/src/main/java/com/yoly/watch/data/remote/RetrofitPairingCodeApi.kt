@@ -2,7 +2,7 @@ package com.yoly.watch.data.remote
 
 import com.yoly.watch.data.remote.dto.CreatePairingCodeRequest
 import com.yoly.watch.data.remote.dto.PairingCodeDto
-import com.yoly.watch.data.remote.dto.PairingStatusDto
+import com.yoly.watch.data.remote.dto.PairingEventDto
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -22,10 +22,10 @@ class RetrofitPairingCodeApi(
     private val json: Json,
 ) : PairingCodeApi {
 
-    override suspend fun fetchPairingCode(watchId: String): PairingCodeDto =
-        service.createPairingCode(CreatePairingCodeRequest(watchId))
+    override suspend fun fetchPairingCode(deviceUuid: String): PairingCodeDto =
+        service.createPairingCode(CreatePairingCodeRequest(deviceUuid))
 
-    override fun observeStatus(pairingId: String): Flow<PairingStatusDto> = callbackFlow {
+    override fun observeEvents(pairingId: String): Flow<PairingEventDto> = callbackFlow {
         val request = Request.Builder()
             .url("${baseUrl}pairing/$pairingId/events")
             .header("Accept", "text/event-stream")
@@ -38,7 +38,7 @@ class RetrofitPairingCodeApi(
                 type: String?,
                 data: String,
             ) {
-                trySend(json.decodeFromString<PairingStatusDto>(data))
+                trySend(json.decodeFromString<PairingEventDto>(data))
             }
 
             override fun onFailure(

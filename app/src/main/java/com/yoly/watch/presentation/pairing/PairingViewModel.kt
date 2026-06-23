@@ -6,8 +6,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.yoly.watch.di.ServiceLocator
 import com.yoly.watch.domain.model.PairingCode
-import com.yoly.watch.domain.model.PairingStatus
-import com.yoly.watch.domain.usecase.ObservePairingStatusUseCase
+import com.yoly.watch.domain.model.PairingEvent
+import com.yoly.watch.domain.usecase.ObservePairingEventsUseCase
 import com.yoly.watch.domain.usecase.RequestPairingCodeUseCase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -19,14 +19,14 @@ import kotlinx.coroutines.launch
 
 class PairingViewModel(
     private val requestPairingCode: RequestPairingCodeUseCase,
-    private val observePairingStatus: ObservePairingStatusUseCase,
+    private val observePairingEvents: ObservePairingEventsUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<PairingUiState>(PairingUiState.Loading)
     val uiState: StateFlow<PairingUiState> = _uiState.asStateFlow()
 
     private var countdownJob: Job? = null
-    private var statusJob: Job? = null
+    private var eventsJob: Job? = null
 
     init {
         loadCode()
@@ -34,14 +34,14 @@ class PairingViewModel(
 
     fun loadCode() {
         countdownJob?.cancel()
-        statusJob?.cancel()
+        eventsJob?.cancel()
         _uiState.value = PairingUiState.Loading
         viewModelScope.launch {
             try {
                 val code = requestPairingCode()
                 _uiState.value = PairingUiState.Success(code, code.validForSeconds)
                 startCountdown(code)
-                observeStatus(code)
+                observeEvents(code)
             } catch (e: Exception) {
                 _uiState.value = PairingUiState.Error(
                     e.message ?: "Impossible de récupérer le code. Réessayez."
@@ -64,18 +64,18 @@ class PairingViewModel(
         }
     }
 
-    private fun observeStatus(code: PairingCode) {
-        statusJob = viewModelScope.launch {
-            observePairingStatus(code.pairingId)
+    private fun observeEvents(code: PairingCode) {
+        eventsJob = viewModelScope.launch {
+            observePairingEvents(code.pairingId)
                 .catch { /* flux SSE interrompu : le compte à rebours relancera un code */ }
-                .collect { status ->
-                    when (status) {
-                        PairingStatus.CONFIRMED -> {
+                .collect { event ->
+                    when (event) {
+                        is PairingEvent.Confirmed -> {
                             countdownJob?.cancel()
                             _uiState.value = PairingUiState.Confirmed
                         }
-                        PairingStatus.EXPIRED -> loadCode()
-                        PairingStatus.PENDING -> Unit
+                        PairingEvent.Expired -> loadCode()
+                        PairingEvent.Pending -> Unit
                     }
                 }
         }
@@ -86,7 +86,7 @@ class PairingViewModel(
             initializer {
                 PairingViewModel(
                     ServiceLocator.provideRequestPairingCodeUseCase(),
-                    ServiceLocator.provideObservePairingStatusUseCase(),
+                    ServiceLocator.provideObservePairingEventsUseCase(),
                 )
             }
         }

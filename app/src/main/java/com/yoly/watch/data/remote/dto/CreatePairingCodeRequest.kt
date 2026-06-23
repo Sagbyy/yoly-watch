@@ -4,5 +4,5 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class CreatePairingCodeRequest(
-    val watchId: String,
+    val deviceUuid: String,
 )

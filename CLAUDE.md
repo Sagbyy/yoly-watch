@@ -45,9 +45,15 @@ com.yoly.watch/
 
 - HTTP via Retrofit + OkHttp; JSON via kotlinx.serialization (`@Serializable` DTOs).
 - Real-time pairing confirmation uses **SSE** (`okhttp-sse` `EventSource`) wrapped in a `callbackFlow`, exposed to the domain as `Flow<PairingStatus>`. The transport (SSE / polling / push) stays an implementation detail of `data/remote` — the ViewModel only collects the Flow.
-- Swap mock ↔ real network in `di/ServiceLocator` via the `USE_MOCK` flag; set `BASE_URL` to the real API. `MockPairingCodeApi` simulates a confirmation so the flow is testable offline.
+- Swap mock ↔ real network in `di/ServiceLocator` via the `USE_MOCK` flag (currently `false`); `BASE_URL` is `http://10.0.2.2:3000/` (host `localhost` as seen from the Android emulator — use the LAN IP on a real device, prod URL otherwise). `MockPairingCodeApi` simulates a confirmation so the flow is testable offline.
 - The SSE client uses `readTimeout = 0` (no read timeout) so the stream stays open.
-- `INTERNET` permission is declared in the manifest.
+- `INTERNET` permission and `usesCleartextTraffic="true"` (dev only — remove for HTTPS prod) are declared in the manifest.
+
+### Pairing API contract (NestJS, `http://localhost:3000`, docs at `/api/docs`)
+- `POST /pairing/codes` body `{ deviceUuid }` → `{ pairingId, code, expiresInSeconds }`.
+- `GET /pairing/{pairingId}/events` (SSE) → each event `data` is `{ status: PENDING|CONFIRMED|EXPIRED, deviceToken? }`. `deviceToken` is present only on `CONFIRMED`; the stream ends on `CONFIRMED`/`EXPIRED`.
+- On `CONFIRMED` the repository persists `deviceToken` via `DeviceCredentialsStore` (the watch's `dvc_…` bearer credential for future authenticated calls).
+- `POST /pairing/confirm` is the mobile-side call (Firebase-authed) — not implemented on the watch.
 
 ## Watch identity
 

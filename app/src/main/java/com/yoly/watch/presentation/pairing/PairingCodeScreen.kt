@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -65,6 +66,13 @@ fun PairingCodeScreen(
     onRetry: () -> Unit,
 ) {
     YolywatchTheme {
+        val view = LocalView.current
+        val keepScreenOn = uiState is PairingUiState.Loading || uiState is PairingUiState.Success
+        DisposableEffect(keepScreenOn) {
+            view.keepScreenOn = keepScreenOn
+            onDispose { view.keepScreenOn = false }
+        }
+
         val scrollState = rememberScrollState()
         Scaffold(
             vignette = { Vignette(vignettePosition = VignettePosition.TopAndBottom) },

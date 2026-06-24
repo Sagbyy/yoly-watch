@@ -19,6 +19,10 @@ class DataStoreDeviceCredentialsStore(
     override suspend fun deviceToken(): String? =
         dataStore.data.map { it[KEY] }.first()
 
+    override suspend fun clearDeviceToken() {
+        dataStore.edit { it.remove(KEY) }
+    }
+
     private companion object {
         val KEY = stringPreferencesKey("device_token")
     }

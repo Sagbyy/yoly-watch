@@ -5,8 +5,8 @@ package com.yoly.watch.di
 import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import com.yoly.watch.data.identity.AndroidIdWatchIdentityProvider
 import com.yoly.watch.data.identity.DataStoreDeviceCredentialsStore
-import com.yoly.watch.data.identity.DataStoreWatchIdentityProvider
 import com.yoly.watch.data.remote.MockPairingCodeApi
 import com.yoly.watch.data.remote.PairingCodeApi
 import com.yoly.watch.data.remote.PairingService
@@ -15,8 +15,10 @@ import com.yoly.watch.data.repository.PairingCodeRepositoryImpl
 import com.yoly.watch.domain.identity.DeviceCredentialsStore
 import com.yoly.watch.domain.identity.WatchIdentityProvider
 import com.yoly.watch.domain.repository.PairingCodeRepository
+import com.yoly.watch.domain.usecase.IsWatchPairedUseCase
 import com.yoly.watch.domain.usecase.ObservePairingEventsUseCase
 import com.yoly.watch.domain.usecase.RequestPairingCodeUseCase
+import com.yoly.watch.domain.usecase.ResetPairingUseCase
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -60,7 +62,7 @@ object ServiceLocator {
     }
 
     private val watchIdentityProvider: WatchIdentityProvider by lazy {
-        DataStoreWatchIdentityProvider(appContext.dataStore)
+        AndroidIdWatchIdentityProvider(appContext)
     }
 
     private val credentialsStore: DeviceCredentialsStore by lazy {
@@ -89,4 +91,10 @@ object ServiceLocator {
 
     fun provideObservePairingEventsUseCase(): ObservePairingEventsUseCase =
         ObservePairingEventsUseCase(pairingCodeRepository)
+
+    fun provideIsWatchPairedUseCase(): IsWatchPairedUseCase =
+        IsWatchPairedUseCase(credentialsStore)
+
+    fun provideResetPairingUseCase(): ResetPairingUseCase =
+        ResetPairingUseCase(credentialsStore)
 }

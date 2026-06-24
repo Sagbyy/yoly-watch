@@ -12,11 +12,11 @@ class MockPairingCodeApi(
     private val confirmAfterMillis: Long = 8_000L,
 ) : PairingCodeApi {
 
-    override suspend fun fetchPairingCode(deviceUuid: String): PairingCodeDto {
+    override suspend fun fetchPairingCode(androidId: String): PairingCodeDto {
         delay(responseDelayMillis)
         val code = Random.nextInt(0, 1_000_000).toString().padStart(6, '0')
         return PairingCodeDto(
-            pairingId = "mock-$deviceUuid-$code",
+            pairingId = "mock-$androidId-$code",
             code = code,
             expiresInSeconds = VALIDITY_SECONDS,
         )

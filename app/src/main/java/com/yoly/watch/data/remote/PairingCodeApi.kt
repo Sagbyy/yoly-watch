@@ -5,6 +5,6 @@ import com.yoly.watch.data.remote.dto.PairingEventDto
 import kotlinx.coroutines.flow.Flow
 
 interface PairingCodeApi {
-    suspend fun fetchPairingCode(deviceUuid: String): PairingCodeDto
+    suspend fun fetchPairingCode(androidId: String): PairingCodeDto
     fun observeEvents(pairingId: String): Flow<PairingEventDto>
 }

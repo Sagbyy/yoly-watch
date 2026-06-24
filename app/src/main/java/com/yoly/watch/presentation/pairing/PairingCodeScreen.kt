@@ -57,13 +57,18 @@ fun PairingCodeRoute(
     viewModel: PairingViewModel = viewModel(factory = PairingViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    PairingCodeScreen(uiState = uiState, onRetry = viewModel::loadCode)
+    PairingCodeScreen(
+        uiState = uiState,
+        onRetry = viewModel::loadCode,
+        onRePair = viewModel::rePair,
+    )
 }
 
 @Composable
 fun PairingCodeScreen(
     uiState: PairingUiState,
     onRetry: () -> Unit,
+    onRePair: () -> Unit,
 ) {
     YolywatchTheme {
         val view = LocalView.current
@@ -90,6 +95,7 @@ fun PairingCodeScreen(
                     PairingUiState.Loading -> LoadingContent()
                     is PairingUiState.Success -> SuccessContent(uiState)
                     PairingUiState.Confirmed -> ConfirmedContent()
+                    PairingUiState.AlreadyPaired -> AlreadyPairedContent(onRePair)
                     is PairingUiState.Error -> ErrorContent(uiState.message, onRetry)
                 }
             }
@@ -225,6 +231,45 @@ private fun ConfirmedContent() {
 }
 
 @Composable
+private fun AlreadyPairedContent(onRePair: () -> Unit) {
+    Text(
+        text = "✓",
+        textAlign = TextAlign.Center,
+        color = MaterialTheme.colors.primary,
+        style = MaterialTheme.typography.display1.copy(fontWeight = FontWeight.Bold),
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Text(
+        text = stringResource(R.string.pairing_already_title),
+        textAlign = TextAlign.Center,
+        style = MaterialTheme.typography.title3,
+        color = MaterialTheme.colors.onBackground,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Text(
+        text = stringResource(R.string.pairing_already_message),
+        textAlign = TextAlign.Center,
+        style = MaterialTheme.typography.body2,
+        color = MaterialTheme.colors.onSurfaceVariant,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Chip(
+        onClick = onRePair,
+        label = {
+            Text(
+                text = stringResource(R.string.pairing_repair),
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+            )
+        },
+        colors = ChipDefaults.secondaryChipColors(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp),
+    )
+}
+
+@Composable
 private fun ErrorContent(message: String, onRetry: () -> Unit) {
     Text(
         text = stringResource(R.string.pairing_error),
@@ -268,19 +313,26 @@ private fun SuccessPreview() {
             remainingSeconds = 78,
         ),
         onRetry = {},
+        onRePair = {},
     )
 }
 
 @Preview(device = WearDevices.SMALL_ROUND, showSystemUi = true)
 @Composable
 private fun ConfirmedPreview() {
-    PairingCodeScreen(uiState = PairingUiState.Confirmed, onRetry = {})
+    PairingCodeScreen(uiState = PairingUiState.Confirmed, onRetry = {}, onRePair = {})
+}
+
+@Preview(device = WearDevices.SMALL_ROUND, showSystemUi = true)
+@Composable
+private fun AlreadyPairedPreview() {
+    PairingCodeScreen(uiState = PairingUiState.AlreadyPaired, onRetry = {}, onRePair = {})
 }
 
 @Preview(device = WearDevices.SMALL_ROUND, showSystemUi = true)
 @Composable
 private fun LoadingPreview() {
-    PairingCodeScreen(uiState = PairingUiState.Loading, onRetry = {})
+    PairingCodeScreen(uiState = PairingUiState.Loading, onRetry = {}, onRePair = {})
 }
 
 @Preview(device = WearDevices.SMALL_ROUND, showSystemUi = true)
@@ -289,5 +341,6 @@ private fun ErrorPreview() {
     PairingCodeScreen(
         uiState = PairingUiState.Error("Délai dépassé"),
         onRetry = {},
+        onRePair = {},
     )
 }

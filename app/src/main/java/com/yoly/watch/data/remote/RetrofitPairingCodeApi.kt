@@ -22,8 +22,8 @@ class RetrofitPairingCodeApi(
     private val json: Json,
 ) : PairingCodeApi {
 
-    override suspend fun fetchPairingCode(deviceUuid: String): PairingCodeDto =
-        service.createPairingCode(CreatePairingCodeRequest(deviceUuid))
+    override suspend fun fetchPairingCode(androidId: String): PairingCodeDto =
+        service.createPairingCode(CreatePairingCodeRequest(androidId))
 
     override fun observeEvents(pairingId: String): Flow<PairingEventDto> = callbackFlow {
         val request = Request.Builder()

@@ -7,8 +7,10 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.yoly.watch.di.ServiceLocator
 import com.yoly.watch.domain.model.PairingCode
 import com.yoly.watch.domain.model.PairingEvent
+import com.yoly.watch.domain.usecase.IsWatchPairedUseCase
 import com.yoly.watch.domain.usecase.ObservePairingEventsUseCase
 import com.yoly.watch.domain.usecase.RequestPairingCodeUseCase
+import com.yoly.watch.domain.usecase.ResetPairingUseCase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +22,8 @@ import kotlinx.coroutines.launch
 class PairingViewModel(
     private val requestPairingCode: RequestPairingCodeUseCase,
     private val observePairingEvents: ObservePairingEventsUseCase,
+    private val isWatchPaired: IsWatchPairedUseCase,
+    private val resetPairing: ResetPairingUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<PairingUiState>(PairingUiState.Loading)
@@ -29,7 +33,20 @@ class PairingViewModel(
     private var eventsJob: Job? = null
 
     init {
-        loadCode()
+        viewModelScope.launch {
+            if (isWatchPaired()) {
+                _uiState.value = PairingUiState.AlreadyPaired
+            } else {
+                loadCode()
+            }
+        }
+    }
+
+    fun rePair() {
+        viewModelScope.launch {
+            resetPairing()
+            loadCode()
+        }
     }
 
     fun loadCode() {
@@ -87,6 +104,8 @@ class PairingViewModel(
                 PairingViewModel(
                     ServiceLocator.provideRequestPairingCodeUseCase(),
                     ServiceLocator.provideObservePairingEventsUseCase(),
+                    ServiceLocator.provideIsWatchPairedUseCase(),
+                    ServiceLocator.provideResetPairingUseCase(),
                 )
             }
         }

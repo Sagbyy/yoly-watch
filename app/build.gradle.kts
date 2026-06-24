@@ -69,6 +69,8 @@ dependencies {
     implementation(libs.okhttp.logging.interceptor)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.datastore.preferences)
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.ui.test.junit4)
     debugImplementation(libs.ui.tooling)

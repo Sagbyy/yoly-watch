@@ -60,6 +60,7 @@ fun PairingCodeRoute(
     PairingCodeScreen(
         uiState = uiState,
         onRetry = viewModel::loadCode,
+        onContinue = viewModel::goToHome,
         onRePair = viewModel::rePair,
     )
 }
@@ -68,14 +69,17 @@ fun PairingCodeRoute(
 fun PairingCodeScreen(
     uiState: PairingUiState,
     onRetry: () -> Unit,
+    onContinue: () -> Unit,
     onRePair: () -> Unit,
 ) {
     YolywatchTheme {
         val view = LocalView.current
         val keepScreenOn = uiState is PairingUiState.Loading || uiState is PairingUiState.Success
-        DisposableEffect(keepScreenOn) {
-            view.keepScreenOn = keepScreenOn
-            onDispose { view.keepScreenOn = false }
+        if (!LocalInspectionMode.current) {
+            DisposableEffect(keepScreenOn) {
+                view.keepScreenOn = keepScreenOn
+                onDispose { view.keepScreenOn = false }
+            }
         }
 
         val scrollState = rememberScrollState()
@@ -94,8 +98,8 @@ fun PairingCodeScreen(
                 when (uiState) {
                     PairingUiState.Loading -> LoadingContent()
                     is PairingUiState.Success -> SuccessContent(uiState)
-                    PairingUiState.Confirmed -> ConfirmedContent()
-                    PairingUiState.AlreadyPaired -> AlreadyPairedContent(onRePair)
+                    PairingUiState.Confirmed -> ConfirmedContent(onContinue)
+                    PairingUiState.Home -> HomeContent(onRePair)
                     is PairingUiState.Error -> ErrorContent(uiState.message, onRetry)
                 }
             }
@@ -176,33 +180,32 @@ private fun CodeRing(state: PairingUiState.Success) {
 }
 
 @Composable
-private fun ConfirmedContent() {
+private fun ConfirmedContent(onContinue: () -> Unit) {
     val haptic = LocalHapticFeedback.current
     val inInspection = LocalInspectionMode.current
-    val scale = remember { Animatable(0f) }
+    val scale = remember { Animatable(if (inInspection) 1f else 0f) }
 
-    val toneGenerator = remember {
-        if (inInspection) null
-        else runCatching {
-            ToneGenerator(AudioManager.STREAM_NOTIFICATION, ToneGenerator.MAX_VOLUME)
-        }.getOrNull()
-    }
-    DisposableEffect(Unit) {
-        onDispose { toneGenerator?.release() }
-    }
-
-    LaunchedEffect(Unit) {
-        toneGenerator?.startTone(ToneGenerator.TONE_PROP_ACK, 250)
-        if (!inInspection) {
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+    if (!inInspection) {
+        val toneGenerator = remember {
+            runCatching {
+                ToneGenerator(AudioManager.STREAM_NOTIFICATION, ToneGenerator.MAX_VOLUME)
+            }.getOrNull()
         }
-        scale.animateTo(
-            targetValue = 1f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow,
-            ),
-        )
+        DisposableEffect(Unit) {
+            onDispose { toneGenerator?.release() }
+        }
+
+        LaunchedEffect(Unit) {
+            toneGenerator?.startTone(ToneGenerator.TONE_PROP_ACK, 250)
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            scale.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow,
+                ),
+            )
+        }
     }
 
     Text(
@@ -228,26 +231,33 @@ private fun ConfirmedContent() {
         color = MaterialTheme.colors.onSurfaceVariant,
         modifier = Modifier.fillMaxWidth(),
     )
+    Chip(
+        onClick = onContinue,
+        label = {
+            Text(
+                text = stringResource(R.string.pairing_continue),
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+            )
+        },
+        colors = ChipDefaults.primaryChipColors(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp),
+    )
 }
 
 @Composable
-private fun AlreadyPairedContent(onRePair: () -> Unit) {
+private fun HomeContent(onRePair: () -> Unit) {
     Text(
-        text = "✓",
+        text = stringResource(R.string.home_title),
         textAlign = TextAlign.Center,
-        color = MaterialTheme.colors.primary,
-        style = MaterialTheme.typography.display1.copy(fontWeight = FontWeight.Bold),
-        modifier = Modifier.fillMaxWidth(),
-    )
-    Text(
-        text = stringResource(R.string.pairing_already_title),
-        textAlign = TextAlign.Center,
-        style = MaterialTheme.typography.title3,
+        style = MaterialTheme.typography.title2,
         color = MaterialTheme.colors.onBackground,
         modifier = Modifier.fillMaxWidth(),
     )
     Text(
-        text = stringResource(R.string.pairing_already_message),
+        text = stringResource(R.string.home_message),
         textAlign = TextAlign.Center,
         style = MaterialTheme.typography.body2,
         color = MaterialTheme.colors.onSurfaceVariant,
@@ -313,6 +323,7 @@ private fun SuccessPreview() {
             remainingSeconds = 78,
         ),
         onRetry = {},
+        onContinue = {},
         onRePair = {},
     )
 }
@@ -320,19 +331,34 @@ private fun SuccessPreview() {
 @Preview(device = WearDevices.SMALL_ROUND, showSystemUi = true)
 @Composable
 private fun ConfirmedPreview() {
-    PairingCodeScreen(uiState = PairingUiState.Confirmed, onRetry = {}, onRePair = {})
+    PairingCodeScreen(
+        uiState = PairingUiState.Confirmed,
+        onRetry = {},
+        onContinue = {},
+        onRePair = {},
+    )
 }
 
 @Preview(device = WearDevices.SMALL_ROUND, showSystemUi = true)
 @Composable
-private fun AlreadyPairedPreview() {
-    PairingCodeScreen(uiState = PairingUiState.AlreadyPaired, onRetry = {}, onRePair = {})
+private fun HomePreview() {
+    PairingCodeScreen(
+        uiState = PairingUiState.Home,
+        onRetry = {},
+        onContinue = {},
+        onRePair = {},
+    )
 }
 
 @Preview(device = WearDevices.SMALL_ROUND, showSystemUi = true)
 @Composable
 private fun LoadingPreview() {
-    PairingCodeScreen(uiState = PairingUiState.Loading, onRetry = {}, onRePair = {})
+    PairingCodeScreen(
+        uiState = PairingUiState.Loading,
+        onRetry = {},
+        onContinue = {},
+        onRePair = {},
+    )
 }
 
 @Preview(device = WearDevices.SMALL_ROUND, showSystemUi = true)
@@ -341,6 +367,7 @@ private fun ErrorPreview() {
     PairingCodeScreen(
         uiState = PairingUiState.Error("Délai dépassé"),
         onRetry = {},
+        onContinue = {},
         onRePair = {},
     )
 }

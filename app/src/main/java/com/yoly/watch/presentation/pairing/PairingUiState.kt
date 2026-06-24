@@ -12,6 +12,6 @@ sealed interface PairingUiState {
             get() = (remainingSeconds.toFloat() / code.validForSeconds).coerceIn(0f, 1f)
     }
     data object Confirmed : PairingUiState
-    data object AlreadyPaired : PairingUiState
+    data object Home : PairingUiState
     data class Error(val message: String) : PairingUiState
 }

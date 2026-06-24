@@ -13,7 +13,8 @@
     <string name="pairing_error">Impossible de récupérer le code.</string>
     <string name="pairing_confirmed_title">Montre associée</string>
     <string name="pairing_confirmed_message">Votre montre est désormais connectée à votre compte Yoly.</string>
-    <string name="pairing_already_title">Montre associée</string>
-    <string name="pairing_already_message">Cette montre est déjà connectée à votre compte Yoly.</string>
+    <string name="pairing_continue">Continuer</string>
     <string name="pairing_repair">Réappairer</string>
+    <string name="home_title">Accueil Yoly</string>
+    <string name="home_message">Votre montre est connectée. Contenu à venir.</string>
 </resources>

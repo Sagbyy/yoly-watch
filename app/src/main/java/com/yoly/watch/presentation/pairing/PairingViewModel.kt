@@ -35,11 +35,17 @@ class PairingViewModel(
     init {
         viewModelScope.launch {
             if (isWatchPaired()) {
-                _uiState.value = PairingUiState.AlreadyPaired
+                _uiState.value = PairingUiState.Home
             } else {
                 loadCode()
             }
         }
+    }
+
+    fun goToHome() {
+        countdownJob?.cancel()
+        eventsJob?.cancel()
+        _uiState.value = PairingUiState.Home
     }
 
     fun rePair() {

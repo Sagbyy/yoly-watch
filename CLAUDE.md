@@ -61,6 +61,13 @@ com.yoly.watch/
 - It is sent as `watchId` in the `POST /pairing/codes` body so the backend can durably associate the watch with the account. Distinct from the server-generated, ephemeral `pairingId`.
 - `ServiceLocator.init(context)` is called from the `YolyWatchApp` Application class (registered via `android:name` in the manifest) to provide the Context that DataStore needs.
 
+## Testing
+
+- **Everything is tested.** Every domain model, mapper, use case, repository, and ViewModel ships with unit tests under `src/test` (JVM). No logic is added without a test.
+- Unit tests cover pure logic only: use fakes for interfaces (`PairingCodeApi`, `PairingCodeRepository`, `DeviceCredentialsStore`, `WatchIdentityProvider`) — never real network or DataStore.
+- ViewModels and Flows are tested with `kotlinx-coroutines-test` (`runTest` + a `StandardTestDispatcher` installed via `MainDispatcherRule`); drive virtual time with `runCurrent()` / `advanceTimeBy()`.
+- Android-dependent edges (DataStore-backed stores, the `Settings.Secure` identity provider, Retrofit/OkHttp + SSE wiring) are kept deliberately thin and verified via instrumented tests or manual runs — keep business logic out of them so it stays JVM-testable.
+
 ## Build
 
 ```

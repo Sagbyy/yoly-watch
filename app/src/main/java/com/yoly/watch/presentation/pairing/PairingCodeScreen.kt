@@ -15,6 +15,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -24,7 +28,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.shape.GenericShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalInspectionMode
@@ -57,11 +65,14 @@ fun PairingCodeRoute(
     viewModel: PairingViewModel = viewModel(factory = PairingViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val syncStatus by viewModel.syncStatus.collectAsStateWithLifecycle()
     PairingCodeScreen(
         uiState = uiState,
+        syncStatus = syncStatus,
         onRetry = viewModel::loadCode,
         onContinue = viewModel::goToHome,
         onRePair = viewModel::rePair,
+        onSync = viewModel::syncNow,
     )
 }
 
@@ -71,6 +82,8 @@ fun PairingCodeScreen(
     onRetry: () -> Unit,
     onContinue: () -> Unit,
     onRePair: () -> Unit,
+    syncStatus: SyncUiState = SyncUiState.Idle,
+    onSync: () -> Unit = {},
 ) {
     YolywatchTheme {
         val view = LocalView.current
@@ -87,20 +100,24 @@ fun PairingCodeScreen(
             vignette = { Vignette(vignettePosition = VignettePosition.TopAndBottom) },
             positionIndicator = { PositionIndicator(scrollState = scrollState) },
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .padding(horizontal = 14.dp, vertical = 32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically),
-            ) {
-                when (uiState) {
-                    PairingUiState.Loading -> LoadingContent()
-                    is PairingUiState.Success -> SuccessContent(uiState)
-                    PairingUiState.Confirmed -> ConfirmedContent(onContinue)
-                    PairingUiState.Home -> HomeContent(onRePair)
-                    is PairingUiState.Error -> ErrorContent(uiState.message, onRetry)
+            if (uiState is PairingUiState.Home) {
+                HomePager(syncStatus = syncStatus, onSync = onSync, onRePair = onRePair)
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
+                        .padding(horizontal = 14.dp, vertical = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically),
+                ) {
+                    when (uiState) {
+                        PairingUiState.Loading -> LoadingContent()
+                        is PairingUiState.Success -> SuccessContent(uiState)
+                        PairingUiState.Confirmed -> ConfirmedContent(onContinue)
+                        is PairingUiState.Error -> ErrorContent(uiState.message, onRetry)
+                        PairingUiState.Home -> Unit
+                    }
                 }
             }
         }
@@ -248,35 +265,148 @@ private fun ConfirmedContent(onContinue: () -> Unit) {
 }
 
 @Composable
-private fun HomeContent(onRePair: () -> Unit) {
-    Text(
-        text = stringResource(R.string.home_title),
-        textAlign = TextAlign.Center,
-        style = MaterialTheme.typography.title2,
-        color = MaterialTheme.colors.onBackground,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    Text(
-        text = stringResource(R.string.home_message),
-        textAlign = TextAlign.Center,
-        style = MaterialTheme.typography.body2,
-        color = MaterialTheme.colors.onSurfaceVariant,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    Chip(
-        onClick = onRePair,
-        label = {
+private fun HomePager(
+    syncStatus: SyncUiState,
+    onSync: () -> Unit,
+    onRePair: () -> Unit,
+) {
+    val pagerState = rememberPagerState(pageCount = { 2 })
+    HorizontalPager(
+        state = pagerState,
+        modifier = Modifier.fillMaxSize(),
+    ) { page ->
+        when (page) {
+            0 -> HomePage(syncStatus = syncStatus, onSync = onSync)
+            else -> RePairPage(onRePair = onRePair)
+        }
+    }
+}
+
+@Composable
+private fun HomePage(syncStatus: SyncUiState, onSync: () -> Unit) {
+    val subtitle = when (syncStatus) {
+        SyncUiState.Idle -> stringResource(R.string.home_message)
+        SyncUiState.Syncing -> stringResource(R.string.home_syncing)
+        is SyncUiState.Done -> stringResource(R.string.home_sync_done)
+        SyncUiState.Error -> stringResource(R.string.home_sync_error)
+    }
+    val subtitleColor =
+        if (syncStatus is SyncUiState.Error) MaterialTheme.colors.error
+        else MaterialTheme.colors.onSurfaceVariant
+
+    PageScaffold(
+        title = stringResource(R.string.home_title),
+        subtitle = subtitle,
+        subtitleColor = subtitleColor,
+    ) {
+        BottomEdgeButton(onClick = onSync, enabled = syncStatus != SyncUiState.Syncing) {
+            if (syncStatus == SyncUiState.Syncing) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                    indicatorColor = MaterialTheme.colors.onPrimary,
+                    trackColor = MaterialTheme.colors.onPrimary.copy(alpha = 0.3f),
+                )
+            } else {
+                Text(
+                    text = stringResource(R.string.home_sync),
+                    color = MaterialTheme.colors.onPrimary,
+                    style = MaterialTheme.typography.button,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RePairPage(onRePair: () -> Unit) {
+    PageScaffold(
+        title = stringResource(R.string.home_repair_title),
+        subtitle = stringResource(R.string.home_repair_hint),
+    ) {
+        BottomEdgeButton(onClick = onRePair) {
             Text(
                 text = stringResource(R.string.pairing_repair),
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
+                color = MaterialTheme.colors.onPrimary,
+                style = MaterialTheme.typography.button,
             )
-        },
-        colors = ChipDefaults.secondaryChipColors(),
+        }
+    }
+}
+
+@Composable
+private fun PageScaffold(
+    title: String,
+    subtitle: String,
+    subtitleColor: Color = MaterialTheme.colors.onSurfaceVariant,
+    bottomButton: @Composable () -> Unit,
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 18.dp)
+                .padding(top = 28.dp, bottom = 60.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+        ) {
+            Text(
+                text = title,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.title2,
+                color = MaterialTheme.colors.onBackground,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                text = subtitle,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.body2,
+                color = subtitleColor,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth(),
+            contentAlignment = Alignment.Center,
+        ) {
+            bottomButton()
+        }
+    }
+}
+
+@Composable
+private fun BottomEdgeButton(
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit,
+) {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 6.dp),
-    )
+            .height(52.dp)
+            .clip(BottomEdgeShape)
+            .background(MaterialTheme.colors.primary)
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        content()
+    }
+}
+
+private val BottomEdgeShape: Shape = GenericShape { size, _ ->
+    val w = size.width
+    val h = size.height
+    val corner = h * 0.35f
+    moveTo(corner, 0f)
+    lineTo(w - corner, 0f)
+    quadraticTo(w, 0f, w, corner)
+    lineTo(w, h * 0.55f)
+    quadraticTo(w * 0.5f, h, 0f, h * 0.55f)
+    lineTo(0f, corner)
+    quadraticTo(0f, 0f, corner, 0f)
+    close()
 }
 
 @Composable
@@ -348,6 +478,28 @@ private fun HomePreview() {
         onContinue = {},
         onRePair = {},
     )
+}
+
+@Preview(device = WearDevices.SMALL_ROUND, showSystemUi = true)
+@Composable
+private fun HomeSyncingPreview() {
+    PairingCodeScreen(
+        uiState = PairingUiState.Home,
+        syncStatus = SyncUiState.Syncing,
+        onRetry = {},
+        onContinue = {},
+        onRePair = {},
+    )
+}
+
+@Preview(device = WearDevices.SMALL_ROUND, showSystemUi = true)
+@Composable
+private fun RePairTilePreview() {
+    YolywatchTheme {
+        Box(modifier = Modifier.fillMaxSize()) {
+            RePairPage(onRePair = {})
+        }
+    }
 }
 
 @Preview(device = WearDevices.SMALL_ROUND, showSystemUi = true)

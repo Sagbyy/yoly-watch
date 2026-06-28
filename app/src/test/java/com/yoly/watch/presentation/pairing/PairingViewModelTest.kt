@@ -6,7 +6,9 @@ import com.yoly.watch.domain.usecase.IsWatchPairedUseCase
 import com.yoly.watch.domain.usecase.ObservePairingEventsUseCase
 import com.yoly.watch.domain.usecase.RequestPairingCodeUseCase
 import com.yoly.watch.domain.usecase.ResetPairingUseCase
+import com.yoly.watch.domain.usecase.SyncHealthDataUseCase
 import com.yoly.watch.testutil.FakeDeviceCredentialsStore
+import com.yoly.watch.testutil.FakeHealthRepository
 import com.yoly.watch.testutil.FakePairingCodeRepository
 import com.yoly.watch.testutil.MainDispatcherRule
 import kotlinx.coroutines.flow.emptyFlow
@@ -27,12 +29,14 @@ class PairingViewModelTest {
 
     private val repo = FakePairingCodeRepository()
     private val store = FakeDeviceCredentialsStore()
+    private val healthRepo = FakeHealthRepository()
 
     private fun createViewModel() = PairingViewModel(
         RequestPairingCodeUseCase(repo),
         ObservePairingEventsUseCase(repo),
         IsWatchPairedUseCase(store),
         ResetPairingUseCase(store),
+        SyncHealthDataUseCase(healthRepo),
     )
 
     @Test
@@ -126,4 +130,37 @@ class PairingViewModelTest {
         assertNull(store.token)
         assertTrue(vm.uiState.value is PairingUiState.Success)
     }
+
+    @Test
+    fun `sync now reports done with the uploaded count then returns to idle`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            store.token = "dvc_existing"
+            healthRepo.countToReturn = 4
+            val vm = createViewModel()
+            runCurrent()
+
+            vm.syncNow()
+            runCurrent()
+
+            assertEquals(SyncUiState.Done(4), vm.syncStatus.value)
+            assertEquals(1, healthRepo.syncCount)
+
+            advanceTimeBy(2_100)
+            runCurrent()
+            assertEquals(SyncUiState.Idle, vm.syncStatus.value)
+        }
+
+    @Test
+    fun `sync now reports error when the upload fails`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            store.token = "dvc_existing"
+            healthRepo.errorToThrow = RuntimeException("offline")
+            val vm = createViewModel()
+            runCurrent()
+
+            vm.syncNow()
+            runCurrent()
+
+            assertEquals(SyncUiState.Error, vm.syncStatus.value)
+        }
 }

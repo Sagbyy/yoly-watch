@@ -11,6 +11,7 @@ import com.yoly.watch.domain.usecase.IsWatchPairedUseCase
 import com.yoly.watch.domain.usecase.ObservePairingEventsUseCase
 import com.yoly.watch.domain.usecase.RequestPairingCodeUseCase
 import com.yoly.watch.domain.usecase.ResetPairingUseCase
+import com.yoly.watch.domain.usecase.SyncHealthDataUseCase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,13 +25,18 @@ class PairingViewModel(
     private val observePairingEvents: ObservePairingEventsUseCase,
     private val isWatchPaired: IsWatchPairedUseCase,
     private val resetPairing: ResetPairingUseCase,
+    private val syncHealthData: SyncHealthDataUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<PairingUiState>(PairingUiState.Loading)
     val uiState: StateFlow<PairingUiState> = _uiState.asStateFlow()
 
+    private val _syncStatus = MutableStateFlow<SyncUiState>(SyncUiState.Idle)
+    val syncStatus: StateFlow<SyncUiState> = _syncStatus.asStateFlow()
+
     private var countdownJob: Job? = null
     private var eventsJob: Job? = null
+    private var syncJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -52,6 +58,21 @@ class PairingViewModel(
         viewModelScope.launch {
             resetPairing()
             loadCode()
+        }
+    }
+
+    fun syncNow() {
+        if (_syncStatus.value is SyncUiState.Syncing) return
+        syncJob?.cancel()
+        syncJob = viewModelScope.launch {
+            _syncStatus.value = SyncUiState.Syncing
+            _syncStatus.value = try {
+                SyncUiState.Done(syncHealthData())
+            } catch (e: Exception) {
+                SyncUiState.Error
+            }
+            delay(2_000)
+            _syncStatus.value = SyncUiState.Idle
         }
     }
 
@@ -112,6 +133,7 @@ class PairingViewModel(
                     ServiceLocator.provideObservePairingEventsUseCase(),
                     ServiceLocator.provideIsWatchPairedUseCase(),
                     ServiceLocator.provideResetPairingUseCase(),
+                    ServiceLocator.provideSyncHealthDataUseCase(),
                 )
             }
         }

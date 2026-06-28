@@ -16,5 +16,11 @@
     <string name="pairing_continue">Continuer</string>
     <string name="pairing_repair">Réappairer</string>
     <string name="home_title">Accueil Yoly</string>
-    <string name="home_message">Votre montre est connectée. Contenu à venir.</string>
+    <string name="home_message">Votre montre est connectée.</string>
+    <string name="home_sync">Synchroniser</string>
+    <string name="home_syncing">Synchronisation…</string>
+    <string name="home_sync_done">Données envoyées ✓</string>
+    <string name="home_sync_error">Échec de l\'envoi</string>
+    <string name="home_repair_title">Réappairage</string>
+    <string name="home_repair_hint">Associer cette montre à un autre compte Yoly.</string>
 </resources>

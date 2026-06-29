@@ -12,13 +12,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.wear.compose.foundation.pager.HorizontalPager
+import androidx.wear.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -28,11 +27,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.shape.GenericShape
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalInspectionMode
@@ -47,6 +43,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.ScalingLazyListState
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.CircularProgressIndicator
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.PositionIndicator
@@ -55,6 +54,12 @@ import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
 import androidx.wear.compose.material.Vignette
 import androidx.wear.compose.material.VignettePosition
+import androidx.wear.compose.material3.AppScaffold
+import androidx.wear.compose.material3.ButtonDefaults
+import androidx.wear.compose.material3.EdgeButton
+import androidx.wear.compose.material3.HorizontalPagerScaffold
+import androidx.wear.compose.material3.ScreenScaffold
+import androidx.wear.compose.material3.VerticalPageIndicator
 import androidx.wear.tooling.preview.devices.WearDevices
 import com.yoly.watch.R
 import com.yoly.watch.domain.model.PairingCode
@@ -95,14 +100,19 @@ fun PairingCodeScreen(
             }
         }
 
-        val scrollState = rememberScrollState()
-        Scaffold(
-            vignette = { Vignette(vignettePosition = VignettePosition.TopAndBottom) },
-            positionIndicator = { PositionIndicator(scrollState = scrollState) },
-        ) {
-            if (uiState is PairingUiState.Home) {
-                HomePager(syncStatus = syncStatus, onSync = onSync, onRePair = onRePair)
-            } else {
+        if (uiState is PairingUiState.Home) {
+            HomePager(
+                syncStatus = syncStatus,
+                onSync = onSync,
+                onRePair = onRePair,
+            )
+        } else {
+            val scrollState = rememberScrollState()
+            Scaffold(
+                timeText = { TimeText() },
+                vignette = { Vignette(vignettePosition = VignettePosition.TopAndBottom) },
+                positionIndicator = { PositionIndicator(scrollState = scrollState) },
+            ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -271,13 +281,25 @@ private fun HomePager(
     onRePair: () -> Unit,
 ) {
     val pagerState = rememberPagerState(pageCount = { 2 })
-    HorizontalPager(
-        state = pagerState,
-        modifier = Modifier.fillMaxSize(),
-    ) { page ->
-        when (page) {
-            0 -> HomePage(syncStatus = syncStatus, onSync = onSync)
-            else -> RePairPage(onRePair = onRePair)
+    AppScaffold {
+        HorizontalPagerScaffold(
+            pagerState = pagerState,
+            pageIndicator = {
+                VerticalPageIndicator(
+                    pagerState = pagerState,
+                    modifier = Modifier.align(Alignment.CenterStart),
+                )
+            },
+        ) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize(),
+            ) { page ->
+                when (page) {
+                    0 -> HomePage(syncStatus = syncStatus, onSync = onSync)
+                    else -> RePairPage(onRePair = onRePair)
+                }
+            }
         }
     }
 }
@@ -294,62 +316,92 @@ private fun HomePage(syncStatus: SyncUiState, onSync: () -> Unit) {
         if (syncStatus is SyncUiState.Error) MaterialTheme.colors.error
         else MaterialTheme.colors.onSurfaceVariant
 
-    PageScaffold(
-        title = stringResource(R.string.home_title),
-        subtitle = subtitle,
-        subtitleColor = subtitleColor,
-    ) {
-        BottomEdgeButton(onClick = onSync, enabled = syncStatus != SyncUiState.Syncing) {
-            if (syncStatus == SyncUiState.Syncing) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp,
-                    indicatorColor = MaterialTheme.colors.onPrimary,
-                    trackColor = MaterialTheme.colors.onPrimary.copy(alpha = 0.3f),
-                )
-            } else {
-                Text(
-                    text = stringResource(R.string.home_sync),
-                    color = MaterialTheme.colors.onPrimary,
-                    style = MaterialTheme.typography.button,
-                )
+    val scrollState = rememberScalingLazyListState()
+    ScreenScaffold(
+        scrollState = scrollState,
+        scrollIndicator = null,
+        edgeButton = {
+            EdgeButton(
+                onClick = onSync,
+                enabled = syncStatus != SyncUiState.Syncing,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colors.primary,
+                    contentColor = MaterialTheme.colors.onPrimary,
+                ),
+            ) {
+                if (syncStatus == SyncUiState.Syncing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        indicatorColor = MaterialTheme.colors.onPrimary,
+                        trackColor = MaterialTheme.colors.onPrimary.copy(alpha = 0.3f),
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.home_sync),
+                        color = MaterialTheme.colors.onPrimary,
+                        style = MaterialTheme.typography.button,
+                    )
+                }
             }
-        }
+        },
+    ) { contentPadding ->
+        PageContent(
+            scrollState = scrollState,
+            contentPadding = contentPadding,
+            title = stringResource(R.string.home_title),
+            subtitle = subtitle,
+            subtitleColor = subtitleColor,
+        )
     }
 }
 
 @Composable
 private fun RePairPage(onRePair: () -> Unit) {
-    PageScaffold(
-        title = stringResource(R.string.home_repair_title),
-        subtitle = stringResource(R.string.home_repair_hint),
-    ) {
-        BottomEdgeButton(onClick = onRePair) {
-            Text(
-                text = stringResource(R.string.pairing_repair),
-                color = MaterialTheme.colors.onPrimary,
-                style = MaterialTheme.typography.button,
-            )
-        }
+    val scrollState = rememberScalingLazyListState()
+    ScreenScaffold(
+        scrollState = scrollState,
+        scrollIndicator = null,
+        edgeButton = {
+            EdgeButton(
+                onClick = onRePair,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colors.primary,
+                    contentColor = MaterialTheme.colors.onPrimary,
+                ),
+            ) {
+                Text(
+                    text = stringResource(R.string.pairing_repair),
+                    color = MaterialTheme.colors.onPrimary,
+                    style = MaterialTheme.typography.button,
+                )
+            }
+        },
+    ) { contentPadding ->
+        PageContent(
+            scrollState = scrollState,
+            contentPadding = contentPadding,
+            title = stringResource(R.string.home_repair_title),
+            subtitle = stringResource(R.string.home_repair_hint),
+            subtitleColor = MaterialTheme.colors.onSurfaceVariant,
+        )
     }
 }
 
 @Composable
-private fun PageScaffold(
+private fun PageContent(
+    scrollState: ScalingLazyListState,
+    contentPadding: PaddingValues,
     title: String,
     subtitle: String,
-    subtitleColor: Color = MaterialTheme.colors.onSurfaceVariant,
-    bottomButton: @Composable () -> Unit,
+    subtitleColor: Color,
 ) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 18.dp)
-                .padding(top = 28.dp, bottom = 60.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-        ) {
+    ScalingLazyColumn(
+        state = scrollState,
+        contentPadding = contentPadding,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        item {
             Text(
                 text = title,
                 textAlign = TextAlign.Center,
@@ -357,6 +409,8 @@ private fun PageScaffold(
                 color = MaterialTheme.colors.onBackground,
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+        item {
             Text(
                 text = subtitle,
                 textAlign = TextAlign.Center,
@@ -365,48 +419,7 @@ private fun PageScaffold(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth(),
-            contentAlignment = Alignment.Center,
-        ) {
-            bottomButton()
-        }
     }
-}
-
-@Composable
-private fun BottomEdgeButton(
-    onClick: () -> Unit,
-    enabled: Boolean = true,
-    content: @Composable () -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(52.dp)
-            .clip(BottomEdgeShape)
-            .background(MaterialTheme.colors.primary)
-            .clickable(enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        content()
-    }
-}
-
-private val BottomEdgeShape: Shape = GenericShape { size, _ ->
-    val w = size.width
-    val h = size.height
-    val corner = h * 0.35f
-    moveTo(corner, 0f)
-    lineTo(w - corner, 0f)
-    quadraticTo(w, 0f, w, corner)
-    lineTo(w, h * 0.55f)
-    quadraticTo(w * 0.5f, h, 0f, h * 0.55f)
-    lineTo(0f, corner)
-    quadraticTo(0f, 0f, corner, 0f)
-    close()
 }
 
 @Composable
@@ -496,7 +509,7 @@ private fun HomeSyncingPreview() {
 @Composable
 private fun RePairTilePreview() {
     YolywatchTheme {
-        Box(modifier = Modifier.fillMaxSize()) {
+        AppScaffold {
             RePairPage(onRePair = {})
         }
     }
